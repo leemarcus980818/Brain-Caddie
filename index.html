@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>⛳ Brain Caddie — Trivia Meets Golf</title>
+  <script src="https://tailwindcss.com"></script>
+  <link href="https://googleapis.com" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fairway-gradient {
+      background: linear-gradient(160deg, #064e3b 0%, #065f46 50%, #047857 100%);
+    }
+    .card-surface {
+      background: rgba(255, 255, 255, 0.97);
+      color: #0f172a;
+    }
+    .golf-ball {
+      background: radial-gradient(circle at 30% 30%, #ffffff, #e2e8f0 70%, #94a3b8 100%);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.25s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex justify-center items-start sm:items-center p-0 sm:p-4">
+
+  <!-- Mobile App Container -->
+  <div id="app" class="w-full max-w-md min-h-screen sm:min-h-[780px] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col bg-slate-50 text-slate-900 relative">
+    
+    <!-- Top Header -->
+    <header class="fairway-gradient text-white px-5 pt-6 pb-5 shadow-md">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">⛳</span>
+          <div>
+            <h1 class="font-extrabold text-lg tracking-tight leading-none">BRAIN CADDIE</h1>
+            <p class="text-emerald-200 text-xs font-medium mt-0.5" id="course-subtitle">Quick Nine · Clubhouse</p>
+          </div>
+        </div>
+        <button onclick="toggleScorecard()" id="scorecard-btn" class="hidden bg-emerald-950/50 hover:bg-emerald-950/70 border border-emerald-400/30 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition">
+          <span>📋 Card</span>
+          <span id="header-score-badge" class="bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded-full font-extrabold">E</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Dynamic View -->
+    <main id="screen-container" class="flex-1 flex flex-col p-5 overflow-y-auto">
+      <!-- Content injected by JS -->
+    </main>
+
+    <!-- Scorecard Drawer Modal -->
+    <div id="scorecard-modal" class="hidden fixed inset-0 bg-slate-950/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 max-h-[85vh] overflow-y-auto animate-fade-in">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-extrabold text-lg text-slate-900">📋 Match Scorecard</h3>
+          <button onclick="toggleScorecard()" class="text-slate-400 hover:text-slate-700 font-bold text-xl px-2">&times;</button>
+        </div>
+        <div id="scorecard-content"></div>
+        <button onclick="toggleScorecard()" class="mt-5 w-full py-3 bg-slate-900 text-white font-bold rounded-xl">Back to Course</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. COURSE DATA (Your Sample 9-Hole Course)
+    // ==========================================
+    const COURSE_HOLES = [
+      {
+        hole: 1,
+        category: "Language",
+        tag: "Warm-up",
+        par: 3,
+        question: "Which word is closest in meaning to 'ubiquitous'?",
+        answer: "Everywhere",
+        acceptedAnswers: ["everywhere", "omnipresent", "all over"],
+        ironOptions: ["Rare", "Everywhere", "Temporary"],
+        wedgeOptions: ["Rare", "Everywhere", "Temporary", "Questionable"],
+        hint: "Think of smartphones or Wi-Fi—something you see no matter where you go.",
+        fact: "Ubiquitous comes from the Latin 'ubique', meaning 'everywhere'—a staple word in business strategy decks."
+      },
+      {
+        hole: 2,
+        category: "Science",
+        tag: "Standard",
+        par: 4,
+        question: "Which planet in our solar system has the shortest day?",
+        answer: "Jupiter",
+        acceptedAnswers: ["jupiter"],
+        ironOptions: ["Mars", "Jupiter", "Saturn"],
+        wedgeOptions: ["Earth", "Mars", "Jupiter", "Saturn"],
+        hint: "Despite being the largest planet, this gas giant spins once every ~9.9 hours.",
+        fact: "Jupiter rotates so fast (nearly 28,000 mph at its equator) that a full day lasts just 9 hours and 55 minutes."
+      },
+      {
+        hole: 3,
+        category: "Business",
+        tag: "Standard",
+        par: 4,
+        question: "In finance and business, what does CAGR stand for?",
+        answer: "Compound Annual Growth Rate",
+        acceptedAnswers: ["compound annual growth rate", "compounded annual growth rate"],
+        ironOptions: ["Compound Annual Growth Rate", "Cumulative Asset Growth Ratio", "Capital Allocation Growth Return"],
+        wedgeOptions: ["Compound Annual Growth Rate", "Cumulative Asset Growth Ratio", "Capital Allocation Growth Return", "Corporate Annual Gross Revenue"],
+        hint: "It measures the smoothed yearly rate of return over multiple time periods.",
+        fact: "CAGR smooths out volatile year-to-year swings so investors can compare the steady growth of two assets."
+      },
+      {
+        hole: 4,
+        category: "Geography",
+        tag: "Signature Hole",
+        par: 5,
+        question: "Which country has the most natural lakes in the world?",
+        answer: "Canada",
+        acceptedAnswers: ["canada"],
+        ironOptions: ["Canada", "Finland", "Russia"],
+        wedgeOptions: ["Canada", "Finland", "Russia", "Sweden"],
+        hint: "This North American nation holds over 60% of the world's natural lakes.",
+        fact: "Canada has more lakes than any other country, with estimates putting the number above 2 million depending on size thresholds."
+      },
+      {
+        hole: 5,
+        category: "Food",
+        tag: "Short Par 3",
+        par: 3,
+        question: "What Japanese word describes the savory 'fifth taste'?",
+        answer: "Umami",
+        acceptedAnswers: ["umami"],
+        ironOptions: ["Umami", "Dashi", "Koji"],
+        wedgeOptions: ["Umami", "Dashi", "Koji", "Mirin"],
+        hint: "Found in aged cheese, mushrooms, and soy sauce; it translates roughly to 'pleasant savory taste'.",
+        fact: "Identified in 1908 by chemist Kikunae Ikeda, umami detects glutamates and signals protein-rich foods."
+      },
+      {
+        hole: 6,
+        category: "Technology",
+        tag: "Standard",
+        par: 4,
+        question: "What does 'HTTP' stand for in a website address?",
+        answer: "Hypertext Transfer Protocol",
+        acceptedAnswers: ["hypertext transfer protocol", "hyper text transfer protocol"],
+        ironOptions: ["Hypertext Transfer Protocol", "Hyperlink Transmission Process", "High-Tech Transfer Portal"],
+        wedgeOptions: ["Hypertext Transfer Protocol", "Hyperlink Transmission Process", "High-Tech Transfer Portal", "Host Terminal Transfer Protocol"],
+        hint: "Tim Berners-Lee coined it in 1989 as the foundation of data communication for the World Wide Web.",
+        fact: "Adding the 'S' in HTTPS encrypts those hypertext transfers using TLS so sensitive workplace data stays private."
+      },
+      {
+        hole: 7,
+        category: "History",
+        tag: "Chronology",
+        par: 3,
+        question: "Which of these inventions was patented or demonstrated first?",
+        answer: "The telephone",
+        acceptedAnswers: ["telephone", "the telephone"],
+        ironOptions: ["The telephone", "The light bulb", "The airplane"],
+        wedgeOptions: ["The telephone", "The light bulb", "The airplane", "Radio broadcasting"],
+        hint: "Alexander Graham Bell secured his patent in 1876—three years before Edison's commercial bulb.",
+        fact: "The telephone came first (1876), followed by the incandescent light bulb (1879), radio (1895), and powered flight (1903)."
+      },
+      {
+        hole: 8,
+        category: "Numbers",
+        tag: "Mental Math",
+        par: 5,
+        question: "Without a calculator: Roughly what percentage is 1/6 (rounded to the nearest whole percent)?",
+        answer: "17%",
+        acceptedAnswers: ["17", "17%", "16.7", "16.7%", "16.67", "16.67%"],
+        ironOptions: ["12%", "17%", "25%"],
+        wedgeOptions: ["8%", "12%", "17%", "25%"],
+        hint: "Half of 1/3 (33.3%) gives you the exact figure.",
+        fact: "1/6 equals 16.666...%, a handy mental benchmark when estimating splits or probabilities in meetings."
+      },
+      {
+        hole: 9,
+        category: "Wildcard",
+        tag: "Championship Hole",
+        par: 4,
+        question: "In game theory, what is the name of a state where no player can benefit by changing their strategy unilaterally?",
+        answer: "Nash equilibrium",
+        acceptedAnswers: ["nash equilibrium", "nash"],
+        ironOptions: ["Nash equilibrium", "Pareto efficiency", "Prisoner's dilemma"],
+        wedgeOptions: ["Nash equilibrium", "Pareto efficiency", "Prisoner's dilemma", "Zero-sum state"],
+        hint: "Named after mathematician John Nash, featured in the film 'A Beautiful Mind'.",
+        fact: "A Nash equilibrium occurs when every player's strategy is optimal given the strategies everyone else has chosen."
+      }
+    ];
+
+    // ==========================================
+    // 2. GAME STATE
+    // ==========================================
+    let state = {
+      playerName: "",
+      opponentName: "Marcus",
+      opponentScores: [], // Array of { hole, strokes, par, club, label }
+      currentHoleIndex: 0,
+      playerScores: [],
+mulliganAvailable: true,
+peekedCurrentHole: false,
+selectedClub: null,
+lastShotResult: null,
+isChallengeMode: false
+};
+// Check URL for shared challenge payload (?c=base64)
+function initFromURL() {
+const params = new URLSearchParams(window.location.search);
+const challengeData = params.get("c");
+if (challengeData) {
+try {
+const decoded = JSON.parse(atob(challengeData));
+if (decoded.name && Array.isArray(decoded.scores)) {
+state.opponentName = decoded.name;
+state.opponentScores = decoded.scores;
+state.isChallengeMode = true;
+}
+} catch (e) {
+console.warn("Invalid challenge link, falling back to default opponent.");
+}
+}
+// If no real challenge link, seed realistic async opponent (Marcus) so Peek & Leaderboard work immediately
+if (!state.isChallengeMode) {
+state.opponentName = "Marcus";
+state.opponentScores = [
+{ hole: 1, par: 3, strokes: 2, club: "Driver", label: "Birdie 🐦" },
+{ hole: 2, par: 4, strokes: 4, club: "Wedge", label: "Par" },
+{ hole: 3, par: 4, strokes: 3, club: "Iron", label: "Birdie 🐦" },
+{ hole: 4, par: 5, strokes: 5, club: "Wedge", label: "Par" },
+{ hole: 5, par: 3, strokes: 3, club: "Iron", label: "Par" },
+{ hole: 6, par: 4, strokes: 2, club: "Driver", label: "Eagle 🦅" },
+{ hole: 7, par: 3, strokes: 4, club: "Driver", label: "Bogey 😬" },
+{ hole: 8, par: 5, strokes: 4, club: "Iron", label: "Birdie 🐦" },
+{ hole: 9, par: 4, strokes: 4, club: "Wedge", label: "Par" }
+];
+}
+renderLobby();
+}
+// ==========================================
+// 3. SCORING HELPERS
+// ==========================================
+function formatRelScore(rel) {
+if (rel === 0) return "E";
+return rel > 0 ? +${rel} : ${rel};
+}
+function getPlayerRelativeScore() {
+return state.playerScores.reduce((acc, s) => acc + (s.strokes - s.par), 0);
+}
+function getOpponentRelativeScore(upToHoleCount = 9) {
+return state.opponentScores
+.slice(0, upToHoleCount)
+.reduce((acc, s) => acc + (s.strokes - s.par), 0);
+}
+function getScoreLabel(strokes, par) {
+const diff = strokes - par;
+if (strokes === 1) return "Hole-in-One! 🏆";
+if (diff <= -2) return "Eagle 🦅";
+if (diff === -1) return "Birdie 🐦";
+if (diff === 0) return "Par ⛳";
+return "Bogey 😬";
+}
+function updateHeader() {
+const btn = document.getElementById("scorecard-btn");
+const badge = document.getElementById("header-score-badge");
+const sub = document.getElementById("course-subtitle");
+if (state.playerName && state.currentHoleIndex < COURSE_HOLES.length) {
+btn.classList.remove("hidden");
+badge.textContent = formatRelScore(getPlayerRelativeScore());
+sub.textContent = Hole ${state.currentHoleIndex + 1} of 9 · vs ${state.opponentName};
+} else if (state.currentHoleIndex >= COURSE_HOLES.length) {
+btn.classList.remove("hidden");
+badge.textContent = formatRelScore(getPlayerRelativeScore());
+sub.textContent = 19th Hole · Final Clubhouse;
+} else {
+btn.classList.add("hidden");
+sub.textContent = "Quick Nine · Workplace Trivia Golf";
+}
+}
+// ==========================================
+// 4. SCREENS
+// ==========================================
+// SCREEN 1: LOBBY / CHALLENGE LANDING
+function renderLobby() {
+updateHeader();
+const oppTotal = getOpponentRelativeScore(9);
+const container = document.getElementById("screen-container");
+container.innerHTML = `
+
+${state.isChallengeMode ? "📩 Direct Challenge Link" : "⚡ Featured Matchup"}
+
+9 Holes · ~4 mins
+
+
+⛳ ${state.opponentName} finished at
+${formatRelScore(oppTotal)}.
+
+Think you can beat their score on the Quick Nine?
+Your Golfer Nickname
+🏌️ Tee Off · Hole 1
+
+🏌️
+Pick your club before seeing options: Driver (type answer, -2), Iron (3 choices, -1), or Wedge (4 choices + hint, Par).
+
+
+👀
+Poker Peek: Check ${state.opponentName}'s hole score before shooting, at the cost of losing your Wedge safety net.
+
+
+🛟
+1 Mulligan: Land in the bunker? Replay one hole per round.
+
+
+
+
+`;
+}
+function startMatch() {
+const input = document.getElementById("nickname-input").value.trim();
+state.playerName = input || "You";
+state.currentHoleIndex = 0;
+state.playerScores = [];
+state.mulliganAvailable = true;
+renderClubSelection();
+}
+// SCREEN 2: TEE BOX (CLUB SELECTION + PEEK MECHANIC)
+function renderClubSelection() {
+updateHeader();
+state.peekedCurrentHole = false;
+state.selectedClub = null;
+const holeData = COURSE_HOLES[state.currentHoleIndex];
+const oppHole = state.opponentScores[state.currentHoleIndex];
+const container = document.getElementById("screen-container");
+const eagleStrokes = Math.max(1, holeData.par - 2);
+const birdieStrokes = holeData.par - 1;
+const parStrokes = holeData.par;
+const bogeyStrokes = holeData.par + 1;
+container.innerHTML = `
+
+HOLE ${holeData.hole} · PAR ${holeData.par}
+
+
+${holeData.category} · ${holeData.tag}
+
+The Shot
+
+${holeData.question}
+
+${state.opponentName} already played Hole ${holeData.hole}.
+Peek at their score? Costs your Wedge option.
+
+
+👀 Peek
+
+Select Your Club
+🏌️
+
+
+Driver
+High Risk
+
+No choices · Type exact answer
+
+
+
+${eagleStrokes === 1 ? 'Hole-in-1 🏆' : 'Eagle 🦅 (-2)'}
+Miss: +1 Bogey
+
+🏌️‍♂️
+
+
+Iron
+Medium
+
+3 multiple-choice options
+
+
+
+Birdie 🐦 (-1)
+Miss: +1 Bogey
+
+🥄
+
+
+Wedge
+Safe
+
+4 choices + Caddie Hint
+
+
+
+Par ⛳ (E)
+Miss: +1 Bogey
+
+Mulligan: ${state.mulliganAvailable ? '1 Available 🛟' : 'Used'}
+Your Score: ${formatRelScore(getPlayerRelativeScore())}
+
+
+`;
+}
+function triggerPeek() {
+state.peekedCurrentHole = true;
+const oppHole = state.opponentScores[state.currentHoleIndex];
+const peekBox = document.getElementById("peek-box");
+const wedgeBtn = document.getElementById("wedge-btn");
+peekBox.className = "bg-slate-900 text-white rounded-2xl p-3.5 mb-4 flex items-center justify-between animate-fade-in";
+peekBox.innerHTML = <div class="text-xs"> <span class="uppercase tracking-wider text-amber-400 font-bold text-[10px]">👀 Caddie Intel</span> <p class="font-bold text-sm mt-0.5">${state.opponentName} used ${oppHole.club} → <span class="text-emerald-400">${oppHole.label}</span></p> </div> <span class="text-xs bg-white/10 px-2.5 py-1 rounded-lg font-semibold">Wedge Locked</span>;
+// Disable Wedge
+wedgeBtn.disabled = true;
+wedgeBtn.className = "w-full text-left bg-slate-100 border-2 border-slate-200 rounded-2xl p-3.5 opacity-50 cursor-not-allowed flex items-center justify-between";
+wedgeBtn.querySelector("p").textContent = "Sacrificed to peek at opponent's shot";
+}
+function selectClub(club) {
+if (club === "Wedge" && state.peekedCurrentHole) return;
+state.selectedClub = club;
+renderShotScreen();
+}
+// SCREEN 3: TAKING THE SHOT (ANSWERING)
+function renderShotScreen() {
+const holeData = COURSE_HOLES[state.currentHoleIndex];
+const club = state.selectedClub;
+const container = document.getElementById("screen-container");
+let inputAreaHTML = "";
+if (club === "Driver") {
+inputAreaHTML = `
+Type Your Answer
+🏌️ Swing Driver
+
+
+; } else if (club === "Iron") { inputAreaHTML = 
+
+Choose One (Birdie Shot)
+${holeData.ironOptions.map(opt => <button onclick="evaluateShot('${opt.replace(/'/g, "\\'")}')" class="w-full text-left px-4 py-3.5 bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-600 rounded-xl font-bold text-slate-800 transition"> ${opt} </button>).join("")}
+
+; } else if (club === "Wedge") { inputAreaHTML = 
+
+🧢 Caddie Tip: ${holeData.hint}
+
+
+Choose One (Par Shot)
+${holeData.wedgeOptions.map(opt => <button onclick="evaluateShot('${opt.replace(/'/g, "\\'")}')" class="w-full text-left px-4 py-3 bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-600 rounded-xl font-bold text-slate-800 transition"> ${opt} </button>).join("")}
+
+`;
+}
+container.innerHTML = `
+
+
+
+
+← Change Club
+
+
+Club: ${club}
+
+Hole ${holeData.hole} · Par ${holeData.par} · ${holeData.category}
+
+${holeData.question}
+
+${inputAreaHTML}
+
+
+`;
+if (club === "Driver") {
+setTimeout(() => document.getElementById("driver-answer")?.focus(), 50);
+}
+}
+function submitDriverShot() {
+const val = document.getElementById("driver-answer").value.trim();
+if (!val) return;
+evaluateShot(val);
+}
+function evaluateShot(userAnswer) {
+const holeData = COURSE_HOLES[state.currentHoleIndex];
+const club = state.selectedClub;
+const normalized = userAnswer.trim().toLowerCase();
+let isCorrect = false;
+if (club === "Driver") {
+isCorrect = holeData.acceptedAnswers.some(ans => normalized === ans.toLowerCase());
+} else {
+isCorrect = normalized === holeData.answer.toLowerCase();
+}
+let strokes;
+if (isCorrect) {
+if (club === "Driver") strokes = Math.max(1, holeData.par - 2);
+else if (club === "Iron") strokes = holeData.par - 1;
+else strokes = holeData.par;
+} else {
+strokes = holeData.par + 1;
+}
+const label = getScoreLabel(strokes, holeData.par);
+state.lastShotResult = {
+hole: holeData.hole,
+par: holeData.par,
+club,
+userAnswer,
+isCorrect,
+strokes,
+label,
+correctAnswer: holeData.answer,
+fact: holeData.fact
+};
+renderShotOutcome();
+}
+// SCREEN 4: SHOT OUTCOME + MICRO-LEARNING + MULLIGAN
+function renderShotOutcome() {
+const res = state.lastShotResult;
+const oppHole = state.opponentScores[state.currentHoleIndex];
+const container = document.getElementById("screen-container");
+// Show Mulligan option ONLY if wrong and player still has their Mulligan
+if (!res.isCorrect && state.mulliganAvailable) {
+container.innerHTML = `
+
+
+🏖️
+😬 Into the Bunker!
+
+Your ${res.club} shot ("${res.userAnswer}") missed the green. That's a Bogey (+1).
+Use Your Mulligan?
+You get 1 Mulligan per match to replay a hole from the tee box.
+🛟 Use Mulligan & Replay Hole
+
+
+Take the Bogey (+1)
+
+
+
+
+`;
+return;
+}
+// Otherwise record score and show micro-learning + async comparison
+recordCurrentHoleScore();
+const playerTotalRel = getPlayerRelativeScore();
+const oppTotalSoFarRel = getOpponentRelativeScore(state.currentHoleIndex + 1);
+const isLastHole = state.currentHoleIndex === COURSE_HOLES.length - 1;
+container.innerHTML = `
+
+${res.isCorrect ? '⛳' : '😬'}
+
+Hole ${res.hole} Result
+${res.label}
+
+${res.isCorrect
+? Nice shot! You're now <strong>${formatRelScore(playerTotalRel)}</strong>.
+: Correct answer: <strong>${res.correctAnswer}</strong>. You're now <strong>${formatRelScore(playerTotalRel)}</strong>.}
+
+💡 Caddie Note
+${res.fact}
+On Hole ${res.hole}:
+${state.opponentName} scored ${oppHole.label} (${oppHole.club})
+
+
+Match Pace
+You ${formatRelScore(playerTotalRel)} · ${state.opponentName} ${formatRelScore(oppTotalSoFarRel)}
+
+
+${isLastHole ? '🏆 Finish Round & View Leaderboard' : Next: Hole ${res.hole + 1} →}
+
+
+`;
+}
+function useMulligan() {
+state.mulliganAvailable = false;
+renderClubSelection();
+}
+function acceptBogey() {
+// Force render outcome without mulligan prompt
+const res = state.lastShotResult;
+recordCurrentHoleScore();
+const playerTotalRel = getPlayerRelativeScore();
+const oppHole = state.opponentScores[state.currentHoleIndex];
+const oppTotalSoFarRel = getOpponentRelativeScore(state.currentHoleIndex + 1);
+const isLastHole = state.currentHoleIndex === COURSE_HOLES.length - 1;
+const container = document.getElementById("screen-container");
+container.innerHTML = `
+
+
+
+😬
+Hole ${res.hole} Result
+${res.label}
+
+Correct answer: ${res.correctAnswer}. You're now ${formatRelScore(playerTotalRel)}.
+
+💡 Caddie Note
+${res.fact}
+On Hole ${res.hole}:
+${state.opponentName} scored ${oppHole.label} (${oppHole.club})
+
+
+Match Pace
+You ${formatRelScore(playerTotalRel)} · ${state.opponentName} ${formatRelScore(oppTotalSoFarRel)}
+
+
+${isLastHole ? '🏆 Finish Round & View Leaderboard' : Next: Hole ${res.hole + 1} →}
+
+
+`;
+}
+function recordCurrentHoleScore() {
+const res = state.lastShotResult;
+// Avoid duplicate push if re-rendered
+if (state.playerScores.length === state.currentHoleIndex) {
+state.playerScores.push({
+hole: res.hole,
+par: res.par,
+strokes: res.strokes,
+club: res.club,
+label: res.label
+});
+}
+updateHeader();
+}
+function nextHole() {
+state.currentHoleIndex++;
+if (state.currentHoleIndex < COURSE_HOLES.length) {
+renderClubSelection();
+} else {
+renderClubhouseSummary();
+}
+}
+// SCREEN 5: 19TH HOLE LEADERBOARD & SHARE CHALLENGE LINK
+function renderClubhouseSummary() {
+updateHeader();
+const playerRel = getPlayerRelativeScore();
+const oppRel = getOpponentRelativeScore(9);
+// Build workplace leaderboard including simulated colleagues + user + opponent
+const leaderboard = [
+{ name: state.playerName, score: playerRel, isUser: true },
+{ name: state.opponentName, score: oppRel, isUser: false },
+{ name: "Albert", score: 2, isUser: false },
+{ name: "Emily", score: 4, isUser: false }
+].sort((a, b) => a.score - b.score);
+const userWon = playerRel < oppRel;
+const tied = playerRel === oppRel;
+const headline = userWon
+? 🏆 You beat ${state.opponentName}!
+: tied
+? 🤝 Tied with ${state.opponentName}!
+: ⛳ ${state.opponentName} edged you out!;
+// Encode user's round into a shareable challenge URL
+const payload = btoa(JSON.stringify({
+name: state.playerName,
+scores: state.playerScores
+}));
+const shareURL = ${window.location.origin}${window.location.pathname}?c=${payload};
+const container = document.getElementById("screen-container");
+container.innerHTML = `
+
+Quick Nine Complete
+${headline}
+
+
+${state.playerName}
+${formatRelScore(playerRel)}
+
+vs
+
+${state.opponentName}
+${formatRelScore(oppRel)}
+
+
+Office Leaderboard
+
+${leaderboard.map((entry, idx) => {
+const medals = ["🥇", "🥈", "🥉", "4th"];
+return <div class="flex items-center justify-between px-3 py-2 rounded-xl ${entry.isUser ? 'bg-emerald-50 border border-emerald-200 font-extrabold' : 'bg-slate-50 font-semibold'} text-sm"> <div class="flex items-center gap-2.5"> <span>${medals[idx] || (idx + 1) + 'th'}</span> <span class="text-slate-900">${entry.name} ${entry.isUser ? '(You)' : ''}</span> </div> <span class="${entry.score < 0 ? 'text-emerald-700' : entry.score > 0 ? 'text-rose-600' : 'text-slate-700'} font-extrabold"> ${formatRelScore(entry.score)} </span> </div>;
+}).join("")}
+
+📲 Challenge a Colleague
+Send this link in Slack, Teams, or WhatsApp so they can play against your exact 9-hole scorecard:
+
+📋 Copy Challenge Link (${formatRelScore(playerRel)})
+
+
+📋 Full Scorecard
+
+
+🔄 Rematch
+
+
+
+`;
+}
+function copyChallengeLink(url) {
+const shareText = ⛳ ${state.playerName} just finished the Brain Caddie Quick Nine at ${formatRelScore(getPlayerRelativeScore())}. Think you can beat me?\n${url};
+navigator.clipboard.writeText(shareText).then(() => {
+const btn = document.getElementById("copy-btn");
+btn.textContent = "✅ Copied Invite to Clipboard!";
+btn.classList.replace("bg-slate-900", "bg-emerald-700");
+});
+}
+function rematch() {
+state.currentHoleIndex = 0;
+state.playerScores = [];
+state.mulliganAvailable = true;
+renderClubSelection();
+}
+// ==========================================
+// 5. SCORECARD MODAL
+// ==========================================
+function toggleScorecard() {
+const modal = document.getElementById("scorecard-modal");
+const content = document.getElementById("scorecard-content");
+if (modal.classList.contains("hidden")) {
+content.innerHTML = `
+${COURSE_HOLES.map((h, i) => {
+const p = state.playerScores[i];
+const o = state.opponentScores[i];
+return `
+
