@@ -2,13 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>⛳ Brain Caddie — Trivia Meets Golf</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Inter', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
       -webkit-tap-highlight-color: transparent;
     }
     .fairway-gradient {
@@ -20,442 +22,850 @@
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+    .animate-fade-in {
+      animation: fadeIn 0.25s ease-out forwards;
+    }
   </style>
 </head>
-<body class="min-h-screen bg-slate-950 flex justify-center sm:items-center sm:p-4">
+<body class="min-h-screen flex justify-center items-start sm:items-center p-0 sm:p-4">
 
+  <!-- Mobile App Container -->
   <div id="app" class="w-full max-w-md min-h-screen sm:min-h-[780px] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col bg-slate-50 text-slate-900 relative">
-
-    <!-- Header -->
-    <header class="fairway-gradient text-white px-5 pt-5 pb-4 shadow-md">
+    
+    <!-- Top Header -->
+    <header class="fairway-gradient text-white px-5 pt-6 pb-5 shadow-md">
       <div class="flex justify-between items-center">
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-2">
           <span class="text-2xl">⛳</span>
           <div>
-            <h1 class="font-black text-lg tracking-tight leading-none">BRAIN CADDIE</h1>
-            <p id="subtitle" class="text-emerald-200 text-xs font-medium mt-1">Quick Nine · Clubhouse</p>
+            <h1 class="font-extrabold text-lg tracking-tight leading-none">BRAIN CADDIE</h1>
+            <p class="text-emerald-200 text-xs font-medium mt-0.5" id="course-subtitle">Quick Nine · Clubhouse</p>
           </div>
         </div>
-        <button id="scorecard-btn" data-action="card"
-          class="hidden bg-emerald-950/50 hover:bg-emerald-950/70 border border-emerald-400/30 px-3 py-1.5 rounded-full text-xs font-bold items-center gap-1.5 transition">
+        <button onclick="toggleScorecard()" id="scorecard-btn" class="hidden bg-emerald-950/50 hover:bg-emerald-950/70 border border-emerald-400/30 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition">
           <span>📋 Card</span>
-          <span id="badge" class="bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded-full font-extrabold">E</span>
+          <span id="header-score-badge" class="bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded-full font-extrabold">E</span>
         </button>
       </div>
-      <div id="hole-strip" class="hidden grid grid-cols-9 gap-1.5 mt-4"></div>
     </header>
 
-    <!-- Main view -->
-    <main id="screen" class="flex-1 flex flex-col p-5 overflow-y-auto"></main>
+    <!-- Main Dynamic View -->
+    <main id="screen-container" class="flex-1 flex flex-col p-5 overflow-y-auto">
+      <!-- Content injected by JS -->
+    </main>
 
-    <!-- Toast -->
-    <div id="toast" class="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg opacity-0 transition-opacity z-50"></div>
-  </div>
-
-  <!-- Scorecard modal -->
-  <div id="scorecard-modal" class="hidden fixed inset-0 bg-slate-950/70 z-50 flex items-end sm:items-center justify-center sm:p-4">
-    <div class="bg-white text-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 max-h-[85vh] overflow-y-auto animate-fade-in">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="font-black text-lg">📋 Match Scorecard</h3>
-        <button data-action="close-card" class="text-slate-400 hover:text-slate-700 font-bold text-2xl px-2" aria-label="Close">&times;</button>
+    <!-- Scorecard Drawer Modal -->
+    <div id="scorecard-modal" class="hidden fixed inset-0 bg-slate-950/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 max-h-[85vh] overflow-y-auto animate-fade-in">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-extrabold text-lg text-slate-900">📋 Match Scorecard</h3>
+          <button onclick="toggleScorecard()" class="text-slate-400 hover:text-slate-700 font-bold text-xl px-2">&times;</button>
+        </div>
+        <div id="scorecard-content"></div>
+        <button onclick="toggleScorecard()" class="mt-5 w-full py-3 bg-slate-900 text-white font-bold rounded-xl">Back to Course</button>
       </div>
-      <div id="card-content"></div>
-      <button data-action="close-card" class="mt-5 w-full py-3 bg-slate-900 text-white font-bold rounded-xl">Back to Course</button>
     </div>
+
   </div>
 
   <script>
-  // ==========================================
-  // 1. QUESTION BANK
-  // Add as many questions as you like. Each day the game draws
-  // ONE question per category (9 categories = 9 holes).
-  // ==========================================
-  const QUESTION_BANK = [
-    // ---- Language ----
-    { id:'lang-1', category:'Language',
-      question:"Which word is closest in meaning to 'ubiquitous'?",
-      answer:'Everywhere', acceptedAnswers:['omnipresent','all over'],
-      ironOptions:['Rare','Everywhere','Temporary'],
-      wedgeOptions:['Rare','Everywhere','Temporary','Questionable'],
-      hint:"Think of smartphones or Wi-Fi: something you see no matter where you go.",
-      fact:"Ubiquitous comes from the Latin 'ubique', meaning 'everywhere', a staple word in business strategy decks." },
-    { id:'lang-2', category:'Language',
-      question:"Which word describes someone showing little or no interest or emotion?",
-      answer:'Apathetic', acceptedAnswers:['apathy'],
-      ironOptions:['Apathetic','Ebullient','Garrulous'],
-      wedgeOptions:['Apathetic','Ebullient','Garrulous','Gregarious'],
-      hint:"Picture someone who shrugs at everything, even the office pizza party.",
-      fact:"'Apathy' comes from the Greek 'apathēs', meaning 'without feeling'." },
+    // ==========================================
+    // 1. COURSE DATA (Sample 9-Hole Course)
+    // ==========================================
+    const COURSE_HOLES = [
+      {
+        hole: 1,
+        category: "Language",
+        tag: "Warm-up",
+        par: 3,
+        question: "Which word is closest in meaning to 'ubiquitous'?",
+        answer: "Everywhere",
+        acceptedAnswers: ["everywhere", "omnipresent", "all over"],
+        ironOptions: ["Rare", "Everywhere", "Temporary"],
+        wedgeOptions: ["Rare", "Everywhere", "Temporary", "Questionable"],
+        hint: "Think of smartphones or Wi-Fi—something you see no matter where you go.",
+        fact: "Ubiquitous comes from the Latin 'ubique', meaning 'everywhere'—a staple word in business strategy decks."
+      },
+      {
+        hole: 2,
+        category: "Science",
+        tag: "Standard",
+        par: 4,
+        question: "Which planet in our solar system has the shortest day?",
+        answer: "Jupiter",
+        acceptedAnswers: ["jupiter"],
+        ironOptions: ["Mars", "Jupiter", "Saturn"],
+        wedgeOptions: ["Earth", "Mars", "Jupiter", "Saturn"],
+        hint: "Despite being the largest planet, this gas giant spins once every ~9.9 hours.",
+        fact: "Jupiter rotates so fast (nearly 28,000 mph at its equator) that a full day lasts just 9 hours and 55 minutes."
+      },
+      {
+        hole: 3,
+        category: "Business",
+        tag: "Standard",
+        par: 4,
+        question: "In finance and business, what does CAGR stand for?",
+        answer: "Compound Annual Growth Rate",
+        acceptedAnswers: ["compound annual growth rate", "compounded annual growth rate"],
+        ironOptions: ["Compound Annual Growth Rate", "Cumulative Asset Growth Ratio", "Capital Allocation Growth Return"],
+        wedgeOptions: ["Compound Annual Growth Rate", "Cumulative Asset Growth Ratio", "Capital Allocation Growth Return", "Corporate Annual Gross Revenue"],
+        hint: "It measures the smoothed yearly rate of return over multiple time periods.",
+        fact: "CAGR smooths out volatile year-to-year swings so investors can compare the steady growth of two assets."
+      },
+      {
+        hole: 4,
+        category: "Geography",
+        tag: "Signature Hole",
+        par: 5,
+        question: "Which country has the most natural lakes in the world?",
+        answer: "Canada",
+        acceptedAnswers: ["canada"],
+        ironOptions: ["Canada", "Finland", "Russia"],
+        wedgeOptions: ["Canada", "Finland", "Russia", "Sweden"],
+        hint: "This North American nation holds over 60% of the world's natural lakes.",
+        fact: "Canada has more lakes than any other country, with estimates putting the number above 2 million depending on size thresholds."
+      },
+      {
+        hole: 5,
+        category: "Food",
+        tag: "Short Par 3",
+        par: 3,
+        question: "What Japanese word describes the savory 'fifth taste'?",
+        answer: "Umami",
+        acceptedAnswers: ["umami"],
+        ironOptions: ["Umami", "Dashi", "Koji"],
+        wedgeOptions: ["Umami", "Dashi", "Koji", "Mirin"],
+        hint: "Found in aged cheese, mushrooms, and soy sauce; it translates roughly to 'pleasant savory taste'.",
+        fact: "Identified in 1908 by chemist Kikunae Ikeda, umami detects glutamates and signals protein-rich foods."
+      },
+      {
+        hole: 6,
+        category: "Technology",
+        tag: "Standard",
+        par: 4,
+        question: "What does 'HTTP' stand for in a website address?",
+        answer: "Hypertext Transfer Protocol",
+        acceptedAnswers: ["hypertext transfer protocol", "hyper text transfer protocol"],
+        ironOptions: ["Hypertext Transfer Protocol", "Hyperlink Transmission Process", "High-Tech Transfer Portal"],
+        wedgeOptions: ["Hypertext Transfer Protocol", "Hyperlink Transmission Process", "High-Tech Transfer Portal", "Host Terminal Transfer Protocol"],
+        hint: "Tim Berners-Lee coined it in 1989 as the foundation of data communication for the World Wide Web.",
+        fact: "Adding the 'S' in HTTPS encrypts those hypertext transfers using TLS so sensitive workplace data stays private."
+      },
+      {
+        hole: 7,
+        category: "History",
+        tag: "Chronology",
+        par: 3,
+        question: "Which of these inventions was patented or demonstrated first?",
+        answer: "The telephone",
+        acceptedAnswers: ["telephone", "the telephone"],
+        ironOptions: ["The telephone", "The light bulb", "The airplane"],
+        wedgeOptions: ["The telephone", "The light bulb", "The airplane", "Radio broadcasting"],
+        hint: "Alexander Graham Bell secured his patent in 1876—three years before Edison's commercial bulb.",
+        fact: "The telephone came first (1876), followed by the incandescent light bulb (1879), radio (1895), and powered flight (1903)."
+      },
+      {
+        hole: 8,
+        category: "Numbers",
+        tag: "Mental Math",
+        par: 5,
+        question: "Without a calculator: Roughly what percentage is 1/6 (rounded to the nearest whole percent)?",
+        answer: "17%",
+        acceptedAnswers: ["17", "17%", "16.7", "16.7%", "16.67", "16.67%"],
+        ironOptions: ["12%", "17%", "25%"],
+        wedgeOptions: ["8%", "12%", "17%", "25%"],
+        hint: "Half of 1/3 (33.3%) gives you the exact figure.",
+        fact: "1/6 equals 16.666...%, a handy mental benchmark when estimating splits or probabilities in meetings."
+      },
+      {
+        hole: 9,
+        category: "Wildcard",
+        tag: "Championship Hole",
+        par: 4,
+        question: "In game theory, what is the name of a state where no player can benefit by changing their strategy unilaterally?",
+        answer: "Nash equilibrium",
+        acceptedAnswers: ["nash equilibrium", "nash"],
+        ironOptions: ["Nash equilibrium", "Pareto efficiency", "Prisoner's dilemma"],
+        wedgeOptions: ["Nash equilibrium", "Pareto efficiency", "Prisoner's dilemma", "Zero-sum state"],
+        hint: "Named after mathematician John Nash, featured in the film 'A Beautiful Mind'.",
+        fact: "A Nash equilibrium occurs when every player's strategy is optimal given the strategies everyone else has chosen."
+      }
+    ];
 
-    // ---- Science ----
-    { id:'sci-1', category:'Science',
-      question:'Which planet in our solar system has the shortest day?',
-      answer:'Jupiter', acceptedAnswers:[],
-      ironOptions:['Mars','Jupiter','Saturn'],
-      wedgeOptions:['Earth','Mars','Jupiter','Saturn'],
-      hint:"Despite being the largest planet, this gas giant spins once every ~9.9 hours.",
-      fact:"Jupiter rotates so fast (nearly 28,000 mph at its equator) that a full day lasts just 9 hours and 55 minutes." },
-    { id:'sci-2', category:'Science',
-      question:'What is the chemical symbol for potassium?',
-      answer:'K', acceptedAnswers:['potassium'],
-      ironOptions:['P','K','Pt'],
-      wedgeOptions:['P','K','Pt','Po'],
-      hint:"The symbol comes from the Latin word 'kalium', not the English name.",
-      fact:"Potassium's symbol K comes from 'kalium', a name tied to potash, the plant-ash salts used for centuries in soap and glass." },
-
-    // ---- Business ----
-    { id:'biz-1', category:'Business',
-      question:'In finance and business, what does CAGR stand for?',
-      answer:'Compound Annual Growth Rate', acceptedAnswers:['compounded annual growth rate'],
-      ironOptions:['Compound Annual Growth Rate','Cumulative Asset Growth Ratio','Capital Allocation Growth Return'],
-      wedgeOptions:['Compound Annual Growth Rate','Cumulative Asset Growth Ratio','Capital Allocation Growth Return','Corporate Annual Gross Revenue'],
-      hint:"It measures the smoothed yearly rate of return over multiple time periods.",
-      fact:"CAGR smooths out volatile year-to-year swings so investors can compare the steady growth of two assets." },
-    { id:'biz-2', category:'Business',
-      question:"What does 'ROI' stand for?",
-      answer:'Return on Investment', acceptedAnswers:['return on investments'],
-      ironOptions:['Return on Investment','Rate of Interest','Revenue over Income'],
-      wedgeOptions:['Return on Investment','Rate of Interest','Revenue over Income','Risk over Inflation'],
-      hint:"It's the classic profitability ratio in every budget review.",
-      fact:"ROI = (Gain − Cost) ÷ Cost. An ROI of 1.0 (100%) means you doubled your money." },
-
-    // ---- Geography ----
-    { id:'geo-1', category:'Geography',
-      question:'Which country has the most natural lakes in the world?',
-      answer:'Canada', acceptedAnswers:[],
-      ironOptions:['Canada','Finland','Russia'],
-      wedgeOptions:['Canada','Finland','Russia','Sweden'],
-      hint:"This North American nation holds over 60% of the world's natural lakes.",
-      fact:"Canada has more lakes than any other country, with estimates above 2 million depending on size thresholds." },
-    { id:'geo-2', category:'Geography',
-      question:'What is the capital of Australia?',
-      answer:'Canberra', acceptedAnswers:[],
-      ironOptions:['Sydney','Canberra','Melbourne'],
-      wedgeOptions:['Sydney','Canberra','Melbourne','Perth'],
-      hint:"It's not the biggest city. It was purpose-built as a compromise between rivals.",
-      fact:"Canberra was chosen in 1908 as a compromise between Sydney and Melbourne, and was built from scratch." },
-
-    // ---- Food ----
-    { id:'food-1', category:'Food',
-      question:"What Japanese word describes the savory 'fifth taste'?",
-      answer:'Umami', acceptedAnswers:[],
-      ironOptions:['Umami','Dashi','Koji'],
-      wedgeOptions:['Umami','Dashi','Koji','Mirin'],
-      hint:"Found in aged cheese, mushrooms, and soy sauce; roughly 'pleasant savory taste'.",
-      fact:"Identified in 1908 by chemist Kikunae Ikeda, umami detects glutamates and signals protein-rich foods." },
-    { id:'food-2', category:'Food',
-      question:'Which spice is the most expensive by weight in the world?',
-      answer:'Saffron', acceptedAnswers:[],
-      ironOptions:['Vanilla','Saffron','Cardamom'],
-      wedgeOptions:['Vanilla','Saffron','Cardamom','Cinnamon'],
-      hint:"It comes from the stigmas of a crocus flower.",
-      fact:"Each crocus flower yields only three stigmas, which are hand-harvested. That's why the price is so high." },
-
-    // ---- Technology ----
-    { id:'tech-1', category:'Technology',
-      question:"What does 'HTTP' stand for in a website address?",
-      answer:'Hypertext Transfer Protocol', acceptedAnswers:['hyper text transfer protocol'],
-      ironOptions:['Hypertext Transfer Protocol','Hyperlink Transmission Process','High-Tech Transfer Portal'],
-      wedgeOptions:['Hypertext Transfer Protocol','Hyperlink Transmission Process','High-Tech Transfer Portal','Host Terminal Transfer Protocol'],
-      hint:"Tim Berners-Lee coined it in 1989 as the foundation of the World Wide Web.",
-      fact:"Adding the 'S' in HTTPS encrypts those transfers using TLS, so sensitive workplace data stays private." },
-    { id:'tech-2', category:'Technology',
-      question:"What does 'CPU' stand for?",
-      answer:'Central Processing Unit', acceptedAnswers:[],
-      ironOptions:['Central Processing Unit','Computer Power Utility','Core Programming Unit'],
-      wedgeOptions:['Central Processing Unit','Computer Power Utility','Core Programming Unit','Control Program Upload'],
-      hint:"It's the brain of any computer.",
-      fact:"Modern CPUs can contain billions of transistors on a single chip." },
-
-    // ---- History ----
-    { id:'hist-1', category:'History',
-      question:'Which of these inventions was patented or demonstrated first?',
-      answer:'The telephone', acceptedAnswers:['telephone'],
-      ironOptions:['The telephone','The light bulb','The airplane'],
-      wedgeOptions:['The telephone','The light bulb','The airplane','Radio broadcasting'],
-      hint:"Alexander Graham Bell secured his patent in 1876, three years before Edison's commercial bulb.",
-      fact:"The telephone came first (1876), followed by the incandescent light bulb (1879), radio (1895), and powered flight (1903)." },
-    { id:'hist-2', category:'History',
-      question:'Which dynasty unified China and began construction of the first Great Wall in the 3rd century BCE?',
-      answer:'Qin Dynasty', acceptedAnswers:['qin','the qin dynasty'],
-      ironOptions:['Han Dynasty','Qin Dynasty','Ming Dynasty'],
-      wedgeOptions:['Han Dynasty','Qin Dynasty','Ming Dynasty','Tang Dynasty'],
-      hint:"Its first emperor unified China in 221 BCE and linked existing walls into one defense.",
-      fact:"The famous wall you can visit today is mostly Ming-era construction. Qin's wall was largely earthen and has mostly vanished." },
-
-    // ---- Numbers ----
-    { id:'num-1', category:'Numbers',
-      question:'Without a calculator: roughly what percentage is 1/6 (rounded to the nearest whole percent)?',
-      answer:'17%', acceptedAnswers:['17','16.7','16.7%','16.67','16.67%'],
-      ironOptions:['12%','17%','25%'],
-      wedgeOptions:['8%','12%','17%','25%'],
-      hint:"Half of 1/3 (33.3%) gives you the exact figure.",
-      fact:"1/6 equals 16.666...%, a handy benchmark when estimating splits or probabilities in meetings." },
-    { id:'num-2', category:'Numbers',
-      question:'Without a calculator: what is 15% of 240?',
-      answer:'36', acceptedAnswers:['36%'],
-      ironOptions:['30','36','42'],
-      wedgeOptions:['24','30','36','42'],
-      hint:"Find 10% first (24), then add half of that.",
-      fact:"Fast trick: 10% is 24, and 5% is half of that (12). So 24 + 12 = 36." },
-
-    // ---- Wildcard ----
-    { id:'wild-1', category:'Wildcard',
-      question:'In game theory, what is the name of a state where no player can benefit by changing their strategy unilaterally?',
-      answer:'Nash equilibrium', acceptedAnswers:['nash'],
-      ironOptions:['Nash equilibrium','Pareto efficiency',"Prisoner's dilemma"],
-      wedgeOptions:['Nash equilibrium','Pareto efficiency',"Prisoner's dilemma",'Zero-sum state'],
-      hint:"Named after mathematician John Nash, featured in the film 'A Beautiful Mind'.",
-      fact:"A Nash equilibrium occurs when every player's strategy is optimal given the strategies everyone else has chosen." },
-    { id:'wild-2', category:'Wildcard',
-      question:"What does the slang acronym 'FOMO' stand for?",
-      answer:'Fear of Missing Out', acceptedAnswers:['fomo'],
-      ironOptions:['Fear of Missing Out','Future of Money Online','Focus on Mission Outcomes'],
-      wedgeOptions:['Fear of Missing Out','Future of Money Online','Focus on Mission Outcomes','Forecast of Market Opportunity'],
-      hint:"You'll see it in social posts and Slack threads about the team offsite.",
-      fact:"'FOMO' entered the Oxford English Dictionary in 2013." }
-  ];
-
-  // Par and tag per hole position (the course layout never changes, only the questions do)
-  const HOLE_LAYOUT = [
-    { par:3, tag:'Opening Tee' }, { par:4, tag:'Fairway' },   { par:4, tag:'Fairway' },
-    { par:5, tag:'Signature Hole' }, { par:3, tag:'Short Par 3' }, { par:4, tag:'Fairway' },
-    { par:3, tag:'Island Green' }, { par:5, tag:'Dogleg' },    { par:4, tag:'Championship Hole' }
-  ];
-
-  const STORE_KEY = 'brainCaddie:v2';
-  const CLUBS = { D:'Driver', I:'Iron', W:'Wedge' };
-  const CLUB_CODE = { Driver:'D', Iron:'I', Wedge:'W' };
-
-  // ==========================================
-  // 2. SEEDED RANDOMNESS (same day = same course for everyone)
-  // ==========================================
-  function hashStr(str) {
-    let h = 2166136261;
-    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return h >>> 0;
-  }
-  function makeRng(seed) {
-    let a = hashStr(seed);
-    return () => {
-      a |= 0; a = a + 0x6D2B79F5 | 0;
-      let t = Math.imul(a ^ a >>> 15, 1 | a);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    // ==========================================
+    // 2. GAME STATE
+    // ==========================================
+    let state = {
+      playerName: "",
+      opponentName: "Marcus",
+      opponentScores: [],
+      currentHoleIndex: 0,
+      playerScores: [],
+      mulliganAvailable: true,
+      peekedCurrentHole: false,
+      selectedClub: null,
+      lastShotResult: null,
+      isChallengeMode: false
     };
-  }
-  function shuffle(arr, rng) {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-  const pick = (arr, rng) => arr[Math.floor(rng() * arr.length)];
 
-  // ==========================================
-  // 3. DATES & DAILY COURSE
-  // ==========================================
-  function dateKeyFor(d = new Date()) {
-    return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
-  }
-  // Testing aid: append ?day=2030-01-01 to the URL to preview another day's course
-  const DEV_DAY = /^\d{4}-\d{2}-\d{2}$/.test(new URLSearchParams(location.search).get('day') || '')
-    ? new URLSearchParams(location.search).get('day') : null;
-  const TODAY = DEV_DAY || dateKeyFor();
-
-  function fmtDate(key) {
-    return new Date(key + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-  function timeToNextCourse() {
-    const now = new Date(), next = new Date(now);
-    next.setHours(24, 0, 0, 0);
-    const ms = next - now;
-    return `$${Math.floor(ms / 3600000)}h $${Math.floor((ms % 3600000) / 60000)}m`;
-  }
-
-  // Builds the 9-hole course for a given date key. Deterministic: same key = same course.
-  function buildCourse(key) {
-    const rng = makeRng('brain-caddie:' + key);
-    const categories = [...new Set(QUESTION_BANK.map(q => q.category))];
-    const chosenCats = shuffle(categories, rng).slice(0, 9);
-    const questions = chosenCats.map(cat => pick(QUESTION_BANK.filter(q => q.category === cat), rng));
-
-    return questions.map((q, i) => ({
-      hole: i + 1,
-      ...HOLE_LAYOUT[i],
-      id: q.id,
-      category: q.category,
-      question: q.question,
-      answer: q.answer,
-      acceptedAnswers: q.acceptedAnswers || [],
-      ironOptions: shuffle(q.ironOptions, rng),
-      wedgeOptions: shuffle(q.wedgeOptions, rng),
-      hint: q.hint,
-      fact: q.fact
-    }));
-  }
-
-  // ==========================================
-  // 4. SCORING HELPERS
-  // ==========================================
-  const relTotal = scores => scores.reduce((acc, s) => acc + (s.strokes - s.par), 0);
-  const fmt = r => (r === 0 ? 'E' : r > 0 ? `+${r}` : `${r}`);
-  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-  const normalize = s => String(s).toLowerCase().replace(/[^a-z0-9%.\s]/g, '').replace(/^the\s+/, '').replace(/\s+/g, ' ').trim();
-
-  function strokesFor(club, par) {
-    if (club === 'Driver') return Math.max(1, par - 2);
-    if (club === 'Iron') return par - 1;
-    return par;
-  }
-  function getScoreLabel(strokes, par) {
-    const diff = strokes - par;
-    if (strokes === 1) return 'Hole-in-One! 🏆';
-    if (diff <= -2) return 'Eagle 🦅';
-    if (diff === -1) return 'Birdie 🐦';
-    if (diff === 0) return 'Par ⛳';
-    return 'Bogey 😬';
-  }
-
-  // Marcus's round is simulated from the day's seed, so he changes daily too
-  function simulateOpponent(course, key) {
-    const rng = makeRng('marcus:' + key);
-    return course.map(h => {
-      const club = pick(['Driver', 'Iron', 'Wedge'], rng);
-      const odds = { Driver: 0.35, Iron: 0.6, Wedge: 0.8 }[club];
-      const strokes = rng() < odds ? strokesFor(club, h.par) : h.par + 1;
-      return { hole: h.hole, par: h.par, strokes, club, label: getScoreLabel(strokes, h.par) };
-    });
-  }
-  // Background "office field" for the leaderboard
-  function simulateField(key) {
-    const rng = makeRng('field:' + key);
-    return shuffle(['Albert', 'Emily', 'Priya', 'Dev', 'Jordan'], rng).slice(0, 2)
-      .map(name => ({ name, score: Math.round(rng() * 8) - 3, isUser: false }));
-  }
-
-  // ==========================================
-  // 5. CHALLENGE LINKS (compact, validated)
-  // ==========================================
-  function b64encode(str) {
-    const bytes = new TextEncoder().encode(str);
-    let bin = '';
-    bytes.forEach(b => bin += String.fromCharCode(b));
-    return btoa(bin);
-  }
-  function b64decode(str) {
-    const bin = atob(str);
-    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
-  }
-  function buildChallengeURL() {
-    const payload = {
-      n: app.record.playerName,
-      d: app.key,
-      s: app.record.scores.map(s => [s.strokes, CLUB_CODE[s.club]])
-    };
-    return `$${location.origin}$${location.pathname}?c=${encodeURIComponent(b64encode(JSON.stringify(payload)))}`;
-  }
-  function parseChallenge() {
-    const raw = new URLSearchParams(location.search).get('c');
-    if (!raw) return null;
-    try {
-      const p = JSON.parse(b64decode(raw));
-      const valid = typeof p.n === 'string'
-        && /^\d{4}-\d{2}-\d{2}$/.test(p.d)
-        && Array.isArray(p.s) && p.s.length === 9
-        && p.s.every(x => Array.isArray(x) && Number.isInteger(x[0]) && x[0] >= 1 && x[0] <= 15 && CLUBS[x[1]]);
-      return valid ? { name: p.n.slice(0, 20), key: p.d, scores: p.s } : null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // ==========================================
-  // 6. STORAGE & APP STATE
-  // ==========================================
-  function loadStore() {
-    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || { records: {} }; }
-    catch (e) { return { records: {} }; }
-  }
-  function save() {
-    if (app.mode === 'practice') return;
-    const keys = Object.keys(app.store.records).sort();
-    while (keys.length > 60) delete app.store.records[keys.shift()];
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(app.store)); } catch (e) {}
-  }
-  function newRecord(name) {
-    return { playerName: name, scores: [], mulliganAvailable: true, completed: false, startedAt: new Date().toISOString() };
-  }
-  function currentStreak() {
-    let streak = 0;
-    const d = new Date();
-    for (let i = 0; i < 365; i++) {
-      const rec = app.store.records[dateKeyFor(d)];
-      if (rec?.completed) streak++;
-      else if (i > 0) break;
-      d.setDate(d.getDate() - 1);
-    }
-    return streak;
-  }
-  function currentHole() {
-    return app.course[app.record ? app.record.scores.length : 0];
-  }
-
-  const app = {
-    store: loadStore(),
-    mode: 'daily',       // 'daily' | 'challenge' | 'practice'
-    key: null,
-    course: [],
-    opponent: null,      // { name, scores[] }
-    record: null,        // live reference to the saved round
-    selectedClub: null,
-    peeked: false,
-    lastResult: null
-  };
-
-  // ==========================================
-  // 7. BOOT
-  // ==========================================
-  function boot() {
-    const ch = parseChallenge();
-    const key = ch ? ch.key : TODAY;
-    app.key = key;
-    app.mode = ch ? 'challenge' : 'daily';
-    app.course = buildCourse(key);
-
-    app.opponent = ch
-      ? {
-          name: ch.name,
-          scores: ch.scores.map(([strokes, code], i) => ({
-            hole: i + 1,
-            par: app.course[i].par,
-            strokes,
-            club: CLUBS[code],
-            label: getScoreLabel(strokes, app.course[i].par)
-          }))
+    function initFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const challengeData = params.get("c");
+      if (challengeData) {
+        try {
+          const decoded = JSON.parse(atob(challengeData));
+          if (decoded.name && Array.isArray(decoded.scores)) {
+            state.opponentName = decoded.name;
+            state.opponentScores = decoded.scores;
+            state.isChallengeMode = true;
+          }
+        } catch (e) {
+          console.warn("Invalid challenge link, falling back to default opponent.");
         }
-      : { name: 'Marcus', scores: simulateOpponent(app.course, key) };
+      }
+      if (!state.isChallengeMode) {
+        state.opponentName = "Marcus";
+        state.opponentScores = [
+          { hole: 1, par: 3, strokes: 2, club: "Driver", label: "Birdie 🐦" },
+          { hole: 2, par: 4, strokes: 4, club: "Wedge", label: "Par" },
+          { hole: 3, par: 4, strokes: 3, club: "Iron", label: "Birdie 🐦" },
+          { hole: 4, par: 5, strokes: 5, club: "Wedge", label: "Par" },
+          { hole: 5, par: 3, strokes: 3, club: "Iron", label: "Par" },
+          { hole: 6, par: 4, strokes: 2, club: "Driver", label: "Eagle 🦅" },
+          { hole: 7, par: 3, strokes: 4, club: "Driver", label: "Bogey 😬" },
+          { hole: 8, par: 5, strokes: 4, club: "Iron", label: "Birdie 🐦" },
+          { hole: 9, par: 4, strokes: 4, club: "Wedge", label: "Par" }
+        ];
+      }
+      renderLobby();
+    }
 
-    app.record = app.store.records[key] || null;
-    renderLobby();
-  }
+    // ==========================================
+    // 3. SCORING HELPERS
+    // ==========================================
+    function formatRelScore(rel) {
+      if (rel === 0) return "E";
+      return rel > 0 ? `+${rel}` : `${rel}`;
+    }
+    function getPlayerRelativeScore() {
+      return state.playerScores.reduce((acc, s) => acc + (s.strokes - s.par), 0);
+    }
+    function getOpponentRelativeScore(upToHoleCount = 9) {
+      return state.opponentScores
+        .slice(0, upToHoleCount)
+        .reduce((acc, s) => acc + (s.strokes - s.par), 0);
+    }
+    function getScoreLabel(strokes, par) {
+      const diff = strokes - par;
+      if (strokes === 1) return "Hole-in-One! 🏆";
+      if (diff <= -2) return "Eagle 🦅";
+      if (diff === -1) return "Birdie 🐦";
+      if (diff === 0) return "Par ⛳";
+      return "Bogey 😬";
+    }
+    function updateHeader() {
+      const btn = document.getElementById("scorecard-btn");
+      const badge = document.getElementById("header-score-badge");
+      const sub = document.getElementById("course-subtitle");
+      if (state.playerName && state.currentHoleIndex < COURSE_HOLES.length) {
+        btn.classList.remove("hidden");
+        badge.textContent = formatRelScore(getPlayerRelativeScore());
+        sub.textContent = `Hole ${state.currentHoleIndex + 1} of 9 · vs ${state.opponentName}`;
+      } else if (state.currentHoleIndex >= COURSE_HOLES.length) {
+        btn.classList.remove("hidden");
+        badge.textContent = formatRelScore(getPlayerRelativeScore());
+        sub.textContent = "19th Hole · Final Clubhouse";
+      } else {
+        btn.classList.add("hidden");
+        sub.textContent = "Quick Nine · Workplace Trivia Golf";
+      }
+    }
 
-  // Auto-refresh at midnight (or when the tab is revisited on a new day)
-  function checkRollover() {
-    if (!DEV_DAY && app.mode !== 'practice' && dateKeyFor() !== TODAY) location.reload();
-  }
-  setInterval(() => {
-    const el = document.getElementById('countdown');
-    if (el) el.textContent = timeToNextCourse();
-    checkRollover();
-  }, 60000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkRollover(); });
+    // ==========================================
+    // 4. SCREENS
+    // ==========================================
+    // SCREEN 1: LOBBY / CHALLENGE LANDING
+    function renderLobby() {
+      updateHeader();
+      const oppTotal = getOpponentRelativeScore(9);
+      const container = document.getElementById("screen-container");
+      container.innerHTML = `
+        <div class="animate-fade-in flex-1 flex flex-col justify-between">
+          <div>
+            <div class="inline-block bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full mb-3">
+              ${state.isChallengeMode ? "📩 Direct Challenge Link" : "⚡ Featured Matchup"}
+            </div>
+            <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Quick Nine · ~4 mins</h2>
+            <p class="text-slate-600 text-sm mt-1">Test your professional acumen against the clubhouse leader.</p>
 
-  // ==========================================
-  // 8. SHARED UI
+            <div class="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm mt-5">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Challenger</span>
+                <span class="text-xs bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-full">Finished</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 golf-ball rounded-full flex items-center justify-center font-black text-slate-700 text-lg">🏌️</div>
+                <div>
+                  <h3 class="font-extrabold text-lg text-slate-900">${state.opponentName}</h3>
+                  <p class="text-xs text-slate-500 font-medium">Finished at <strong class="text-slate-900">${formatRelScore(oppTotal)}</strong></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Your Golfer Nickname</label>
+              <input id="nickname-input" type="text" placeholder="e.g. Par-fect Pro" maxlength="20" class="w-full px-4 py-3.5 bg-white border-2 border-slate-200 rounded-2xl font-bold text-slate-900 focus:outline-none focus:border-emerald-600 transition" />
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <button onclick="startMatch()" class="w-full py-4 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-2xl shadow-lg transition flex items-center justify-center gap-2 text-base">
+              <span>🏌️ Tee Off · Hole 1</span>
+            </button>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+              <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+                <div class="text-lg">🏌️</div>
+                <p class="text-[10px] font-bold text-slate-700 mt-1">3 Club Options</p>
+              </div>
+              <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+                <div class="text-lg">👀</div>
+                <p class="text-[10px] font-bold text-slate-700 mt-1">Poker Peek</p>
+              </div>
+              <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+                <div class="text-lg">🛟</div>
+                <p class="text-[10px] font-bold text-slate-700 mt-1">1 Mulligan</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function startMatch() {
+      const inputEl = document.getElementById("nickname-input");
+      const input = inputEl ? inputEl.value.trim() : "";
+      state.playerName = input || "You";
+      state.currentHoleIndex = 0;
+      state.playerScores = [];
+      state.mulliganAvailable = true;
+      renderClubSelection();
+    }
+
+    // SCREEN 2: TEE BOX (CLUB SELECTION + PEEK MECHANIC)
+    function renderClubSelection() {
+      updateHeader();
+      state.peekedCurrentHole = false;
+      state.selectedClub = null;
+      const holeData = COURSE_HOLES[state.currentHoleIndex];
+      const container = document.getElementById("screen-container");
+      const eagleStrokes = Math.max(1, holeData.par - 2);
+
+      container.innerHTML = `
+        <div class="animate-fade-in flex-1 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">HOLE ${holeData.hole} · PAR ${holeData.par}</span>
+              <span class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-0.5 rounded-full">${holeData.category} · ${holeData.tag}</span>
+            </div>
+
+            <div class="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm mb-4">
+              <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">The Shot</span>
+              <h3 class="text-lg font-extrabold text-slate-900 mt-1 leading-snug">${holeData.question}</h3>
+            </div>
+
+            <div id="peek-box" class="bg-emerald-950 text-emerald-100 rounded-2xl p-3.5 mb-4 flex items-center justify-between">
+              <div class="text-xs">
+                <span class="uppercase tracking-wider text-amber-400 font-bold text-[10px]">👀 Clubhouse Intel</span>
+                <p class="font-medium text-xs mt-0.5">${state.opponentName} already played Hole ${holeData.hole}.</p>
+              </div>
+              <button onclick="triggerPeek()" class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs px-3 py-1.5 rounded-xl transition shadow">
+                Peek Score
+              </button>
+            </div>
+
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Your Club</p>
+            <div class="space-y-2.5">
+              <button onclick="selectClub('Driver')" class="w-full text-left bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-600 rounded-2xl p-3.5 transition flex items-center justify-between group">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-base">🏌️</span>
+                    <span class="font-extrabold text-slate-900">Driver</span>
+                    <span class="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded">High Risk</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">No choices · Type exact answer</p>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs font-extrabold text-emerald-700">${eagleStrokes === 1 ? 'Hole-in-1 🏆' : 'Eagle 🦅 (-2)'}</span>
+                  <p class="text-[10px] text-slate-400">Miss: +1 Bogey</p>
+                </div>
+              </button>
+
+              <button onclick="selectClub('Iron')" class="w-full text-left bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-600 rounded-2xl p-3.5 transition flex items-center justify-between group">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-base">🏌️‍♂️</span>
+                    <span class="font-extrabold text-slate-900">Iron</span>
+                    <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">Medium</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">3 multiple-choice options</p>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs font-extrabold text-emerald-700">Birdie 🐦 (-1)</span>
+                  <p class="text-[10px] text-slate-400">Miss: +1 Bogey</p>
+                </div>
+              </button>
+
+              <button id="wedge-btn" onclick="selectClub('Wedge')" class="w-full text-left bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-600 rounded-2xl p-3.5 transition flex items-center justify-between group">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-base">🥄</span>
+                    <span class="font-extrabold text-slate-900">Wedge</span>
+                    <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">Safe</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">4 choices + Caddie Hint</p>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs font-extrabold text-emerald-700">Par ⛳ (E)</span>
+                  <p class="text-[10px] text-slate-400">Miss: +1 Bogey</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 font-medium">
+            <span>Mulligan: ${state.mulliganAvailable ? '1 Available 🛟' : 'Used'}</span>
+            <span>Your Score: <strong class="text-slate-900">${formatRelScore(getPlayerRelativeScore())}</strong></span>
+          </div>
+        </div>
+      `;
+    }
+
+    function triggerPeek() {
+      state.peekedCurrentHole = true;
+      const oppHole = state.opponentScores[state.currentHoleIndex];
+      const peekBox = document.getElementById("peek-box");
+      const wedgeBtn = document.getElementById("wedge-btn");
+
+      peekBox.className = "bg-slate-900 text-white rounded-2xl p-3.5 mb-4 flex items-center justify-between animate-fade-in";
+      peekBox.innerHTML = `
+        <div class="text-xs">
+          <span class="uppercase tracking-wider text-amber-400 font-bold text-[10px]">👀 Caddie Intel</span>
+          <p class="font-bold text-sm mt-0.5">${state.opponentName} used ${oppHole.club} → <span class="text-emerald-400">${oppHole.label}</span></p>
+        </div>
+        <span class="text-xs bg-white/10 px-2.5 py-1 rounded-lg font-semibold">Wedge Locked</span>
+      `;
+
+      wedgeBtn.disabled = true;
+      wedgeBtn.className = "w-full text-left bg-slate-100 border-2 border-slate-200 rounded-2xl p-3.5 opacity-50 cursor-not-allowed flex items-center justify-between";
+      wedgeBtn.querySelector("p").textContent = "Sacrificed to peek at opponent's shot";
+    }
+
+    function selectClub(club) {
+      if (club === "Wedge" && state.peekedCurrentHole) return;
+      state.selectedClub = club;
+      renderShotScreen();
+    }
+
+    // SCREEN 3: TAKING THE SHOT (ANSWERING)
+    function renderShotScreen() {
+      const holeData = COURSE_HOLES[state.currentHoleIndex];
+      const club = state.selectedClub;
+      const container = document.getElementById("screen-container");
+      let inputAreaHTML = "";
+
+      if (club === "Driver") {
+        inputAreaHTML = `
+          <div class="space-y-3 mt-4">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500">Type Your Answer</label>
+            <input id="driver-answer" type="text" placeholder="Type answer here..." class="w-full px-4 py-3.5 bg-white border-2 border-slate-200 rounded-2xl font-bold text-slate-900 focus:outline-none focus:border-emerald-600 transition" onkeydown="if(event.key==='Enter') submitDriverShot()" />
+            <button onclick="submitDriverShot()" class="w-full py-4 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-2xl shadow transition">
+              🏌️ Swing Driver
+            </button>
+          </div>
+        `;
+      } else if (club === "Iron") {
+        inputAreaHTML = `
+          <div class="space-y-2.5 mt-4">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500">Choose One (Birdie Shot)</label>
+            ${holeData.ironOptions.map(opt => `
+              <button onclick="evaluateShot('${opt.replace(/'/g, "\\'")}')" class="w-full text-left px-4 py-3.5 bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-600 rounded-xl font-bold text-slate-800 transition">
+                ${opt}
+              </button>
+            `).join("")}
+          </div>
+        `;
+      } else if (club === "Wedge") {
+        inputAreaHTML = `
+          <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 my-3 text-xs text-emerald-900 font-medium">
+            🧢 <strong>Caddie Tip:</strong> ${holeData.hint}
+          </div>
+          <div class="space-y-2.5 mt-2">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500">Choose One (Par Shot)</label>
+            ${holeData.wedgeOptions.map(opt => `
+              <button onclick="evaluateShot('${opt.replace(/'/g, "\\'")}')" class="w-full text-left px-4 py-3 bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-600 rounded-xl font-bold text-slate-800 transition">
+                ${opt}
+              </button>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <div class="animate-fade-in flex-1 flex flex-col justify-between">
+          <div>
+            <button onclick="renderClubSelection()" class="text-xs text-emerald-700 font-bold mb-3 flex items-center gap-1 hover:underline">
+              ← Change Club
+            </button>
+
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Club: <strong class="text-slate-900">${club}</strong></span>
+              <span class="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-0.5 rounded-full">Hole ${holeData.hole} · Par ${holeData.par}</span>
+            </div>
+
+            <div class="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm">
+              <h3 class="text-lg font-extrabold text-slate-900 leading-snug">${holeData.question}</h3>
+            </div>
+
+            ${inputAreaHTML}
+          </div>
+        </div>
+      `;
+
+      if (club === "Driver") {
+        setTimeout(() => document.getElementById("driver-answer")?.focus(), 50);
+      }
+    }
+
+    function submitDriverShot() {
+      const inputEl = document.getElementById("driver-answer");
+      const val = inputEl ? inputEl.value.trim() : "";
+      if (!val) return;
+      evaluateShot(val);
+    }
+
+    function evaluateShot(userAnswer) {
+      const holeData = COURSE_HOLES[state.currentHoleIndex];
+      const club = state.selectedClub;
+      const normalized = userAnswer.trim().toLowerCase();
+      let isCorrect = false;
+
+      if (club === "Driver") {
+        isCorrect = holeData.acceptedAnswers.some(ans => normalized === ans.toLowerCase());
+      } else {
+        isCorrect = normalized === holeData.answer.toLowerCase();
+      }
+
+      let strokes;
+      if (isCorrect) {
+        if (club === "Driver") strokes = Math.max(1, holeData.par - 2);
+        else if (club === "Iron") strokes = holeData.par - 1;
+        else strokes = holeData.par;
+      } else {
+        strokes = holeData.par + 1;
+      }
+
+      const label = getScoreLabel(strokes, holeData.par);
+      state.lastShotResult = {
+        hole: holeData.hole,
+        par: holeData.par,
+        club,
+        userAnswer,
+        isCorrect,
+        strokes,
+        label,
+        correctAnswer: holeData.answer,
+        fact: holeData.fact
+      };
+
+      renderShotOutcome();
+    }
+
+    // SCREEN 4: SHOT OUTCOME + MICRO-LEARNING + MULLIGAN
+    function renderShotOutcome() {
+      const res = state.lastShotResult;
+      const oppHole = state.opponentScores[state.currentHoleIndex];
+      const container = document.getElementById("screen-container");
+
+      if (!res.isCorrect && state.mulliganAvailable) {
+        container.innerHTML = `
+          <div class="animate-fade-in flex-1 flex flex-col justify-between">
+            <div class="text-center pt-4">
+              <div class="w-16 h-16 bg-amber-100 text-amber-700 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl shadow-inner">🏖️</div>
+              <h2 class="text-2xl font-extrabold text-slate-900">Into the Bunker!</h2>
+              <p class="text-slate-600 text-sm mt-1">Your ${res.club} shot ("${res.userAnswer}") missed the green. That's a Bogey (+1).</p>
+            </div>
+
+            <div class="bg-white border-2 border-slate-200 rounded-3xl p-5 my-4">
+              <h4 class="font-bold text-slate-900 text-sm mb-1">Use Your Mulligan?</h4>
+              <p class="text-xs text-slate-500">You get 1 Mulligan per match to replay a hole from the tee box.</p>
+            </div>
+
+            <div class="space-y-2.5">
+              <button onclick="useMulligan()" class="w-full py-4 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-2xl shadow transition">
+                🛟 Use Mulligan & Replay Hole
+              </button>
+              <button onclick="acceptBogey()" class="w-full py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-2xl transition">
+                Take the Bogey (+1)
+              </button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      recordCurrentHoleScore();
+      const playerTotalRel = getPlayerRelativeScore();
+      const oppTotalSoFarRel = getOpponentRelativeScore(state.currentHoleIndex + 1);
+      const isLastHole = state.currentHoleIndex === COURSE_HOLES.length - 1;
+
+      container.innerHTML = `
+        <div class="animate-fade-in flex-1 flex flex-col justify-between">
+          <div>
+            <div class="${res.isCorrect ? 'fairway-gradient text-white' : 'bg-slate-800 text-white'} rounded-3xl p-6 text-center shadow-lg mb-4">
+              <div class="w-12 h-12 golf-ball rounded-full mx-auto mb-3 flex items-center justify-center text-xl">
+                ${res.isCorrect ? '⛳' : '😬'}
+              </div>
+              <p class="text-xs uppercase tracking-widest font-bold opacity-85">Hole ${res.hole} Result</p>
+              <h2 class="text-2xl font-extrabold mt-1">${res.label}</h2>
+              <p class="text-xs opacity-90 mt-1">
+                ${res.isCorrect 
+                  ? `Nice shot! You're now <strong>${formatRelScore(playerTotalRel)}</strong>.`
+                  : `Correct answer: <strong>${res.correctAnswer}</strong>. You're now <strong>${formatRelScore(playerTotalRel)}</strong>.`}
+              </p>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mb-4">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">💡 Caddie Note</span>
+              <p class="text-xs text-slate-700 mt-1 leading-relaxed">${res.fact}</p>
+            </div>
+
+            <div class="bg-slate-100 rounded-2xl p-3.5 text-xs text-slate-600 flex justify-between items-center">
+              <span>On Hole ${res.hole}: <strong class="text-slate-900">${state.opponentName}</strong> scored ${oppHole.label} (${oppHole.club})</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="text-center text-xs font-semibold text-slate-500 mb-3">
+              Match Pace: You <strong class="text-slate-900">${formatRelScore(playerTotalRel)}</strong> · ${state.opponentName} <strong class="text-slate-900">${formatRelScore(oppTotalSoFarRel)}</strong>
+            </div>
+            <button onclick="nextHole()" class="w-full py-4 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-2xl shadow transition">
+              ${isLastHole ? '🏆 Finish Round & View Leaderboard' : `Next: Hole ${res.hole + 1} →`}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function useMulligan() {
+      state.mulliganAvailable = false;
+      renderClubSelection();
+    }
+
+    function acceptBogey() {
+      const res = state.lastShotResult;
+      recordCurrentHoleScore();
+      const playerTotalRel = getPlayerRelativeScore();
+      const oppHole = state.opponentScores[state.currentHoleIndex];
+      const oppTotalSoFarRel = getOpponentRelativeScore(state.currentHoleIndex + 1);
+      const isLastHole = state.currentHoleIndex === COURSE_HOLES.length - 1;
+      const container = document.getElementById("screen-container");
+
+      container.innerHTML = `
+        <div class="animate-fade-in flex-1 flex flex-col justify-between">
+          <div>
+            <div class="bg-slate-800 text-white rounded-3xl p-6 text-center shadow-lg mb-4">
+              <div class="w-12 h-12 golf-ball rounded-full mx-auto mb-3 flex items-center justify-center text-xl">😬</div>
+              <p class="text-xs uppercase tracking-widest font-bold opacity-80">Hole ${res.hole} Result</p>
+              <h2 class="text-2xl font-extrabold mt-1">${res.label}</h2>
+              <p class="text-xs opacity-90 mt-1">Correct answer: <strong>${res.correctAnswer}</strong>. You're now <strong>${formatRelScore(playerTotalRel)}</strong>.</p>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mb-4">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">💡 Caddie Note</span>
+              <p class="text-xs text-slate-700 mt-1 leading-relaxed">${res.fact}</p>
+            </div>
+          </div>
+
+          <div>
+            <button onclick="nextHole()" class="w-full py-4 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-2xl shadow transition">
+              ${isLastHole ? '🏆 Finish Round & View Leaderboard' : `Next: Hole ${res.hole + 1} →`}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function recordCurrentHoleScore() {
+      const res = state.lastShotResult;
+      if (state.playerScores.length === state.currentHoleIndex) {
+        state.playerScores.push({
+          hole: res.hole,
+          par: res.par,
+          strokes: res.strokes,
+          club: res.club,
+          label: res.label
+        });
+      }
+      updateHeader();
+    }
+
+    function nextHole() {
+      state.currentHoleIndex++;
+      if (state.currentHoleIndex < COURSE_HOLES.length) {
+        renderClubSelection();
+      } else {
+        renderClubhouseSummary();
+      }
+    }
+
+    // SCREEN 5: 19TH HOLE LEADERBOARD & SHARE CHALLENGE LINK
+    function renderClubhouseSummary() {
+      updateHeader();
+      const playerRel = getPlayerRelativeScore();
+      const oppRel = getOpponentRelativeScore(9);
+
+      const leaderboard = [
+        { name: state.playerName, score: playerRel, isUser: true },
+        { name: state.opponentName, score: oppRel, isUser: false },
+        { name: "Albert", score: 2, isUser: false },
+        { name: "Emily", score: 4, isUser: false }
+      ].sort((a, b) => a.score - b.score);
+
+      const userWon = playerRel < oppRel;
+      const tied = playerRel === oppRel;
+      const headline = userWon
+        ? `🏆 You beat ${state.opponentName}!`
+        : tied
+        ? `🤝 Tied with ${state.opponentName}!`
+        : `⛳ ${state.opponentName} edged you out!`;
+
+      const payload = btoa(JSON.stringify({
+        name: state.playerName,
+        scores: state.playerScores
+      }));
+      const shareURL = `${window.location.origin}${window.location.pathname}?c=${payload}`;
+      const container = document.getElementById("screen-container");
+
+      container.innerHTML = `
+        <div class="animate-fade-in flex-1 flex flex-col justify-between">
+          <div>
+            <div class="fairway-gradient text-white rounded-3xl p-6 text-center shadow-lg mb-5">
+              <span class="text-xs uppercase tracking-widest font-extrabold opacity-80">19th Hole Clubhouse</span>
+              <h2 class="text-xl font-extrabold mt-1">${headline}</h2>
+              <div class="flex justify-center gap-6 mt-4 pt-4 border-t border-white/20 text-center">
+                <div>
+                  <p class="text-[10px] uppercase opacity-75">${state.playerName}</p>
+                  <p class="text-xl font-black">${formatRelScore(playerRel)}</p>
+                </div>
+                <div class="border-r border-white/20"></div>
+                <div>
+                  <p class="text-[10px] uppercase opacity-75">${state.opponentName}</p>
+                  <p class="text-xl font-black">${formatRelScore(oppRel)}</p>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Office Leaderboard</p>
+            <div class="space-y-2 mb-5">
+              ${leaderboard.map((entry, idx) => {
+                const medals = ["🥇", "🥈", "🥉", "4th"];
+                return `
+                  <div class="flex items-center justify-between px-3.5 py-2.5 rounded-2xl ${entry.isUser ? 'bg-emerald-50 border-2 border-emerald-300 font-extrabold' : 'bg-white border border-slate-200 font-semibold'} text-sm shadow-sm">
+                    <div class="flex items-center gap-2.5">
+                      <span>${medals[idx] || (idx + 1) + 'th'}</span>
+                      <span class="text-slate-900">${entry.name} ${entry.isUser ? '(You)' : ''}</span>
+                    </div>
+                    <span class="${entry.score < 0 ? 'text-emerald-700' : entry.score > 0 ? 'text-rose-600' : 'text-slate-700'} font-black">
+                      ${formatRelScore(entry.score)}
+                    </span>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+
+            <div class="bg-slate-100 rounded-2xl p-4 border border-slate-200">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-1">📲 Challenge a Colleague</span>
+              <p class="text-xs text-slate-600 mb-3">Send this link in Slack, Teams, or WhatsApp so they can play against your exact 9-hole scorecard:</p>
+              <button id="copy-btn" onclick="copyChallengeLink('${shareURL}')" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition shadow">
+                📋 Copy Challenge Link (${formatRelScore(playerRel)})
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-2.5 mt-5">
+            <button onclick="toggleScorecard()" class="w-full py-3 bg-white hover:bg-slate-100 border-2 border-slate-200 text-slate-800 font-bold rounded-xl text-xs transition">
+              📋 View Full Scorecard
+            </button>
+            <button onclick="rematch()" class="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition shadow">
+              🔄 Rematch
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function copyChallengeLink(url) {
+      const shareText = `⛳ ${state.playerName} just finished the Brain Caddie Quick Nine at ${formatRelScore(getPlayerRelativeScore())}. Think you can beat me?\n${url}`;
+      navigator.clipboard.writeText(shareText).then(() => {
+        const btn = document.getElementById("copy-btn");
+        btn.textContent = "✅ Copied Invite to Clipboard!";
+        btn.classList.replace("bg-slate-900", "bg-emerald-700");
+      });
+    }
+
+    function rematch() {
+      state.currentHoleIndex = 0;
+      state.playerScores = [];
+      state.mulliganAvailable = true;
+      renderClubSelection();
+    }
+
+    // ==========================================
+    // 5. SCORECARD MODAL
+    // ==========================================
+    function toggleScorecard() {
+      const modal = document.getElementById("scorecard-modal");
+      const content = document.getElementById("scorecard-content");
+      if (modal.classList.contains("hidden")) {
+        content.innerHTML = `
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="border-b border-slate-200 text-slate-400 font-bold">
+                  <th class="pb-2">Hole</th>
+                  <th class="pb-2">Par</th>
+                  <th class="pb-2">${state.playerName || 'You'}</th>
+                  <th class="pb-2">${state.opponentName}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-medium">
+                ${COURSE_HOLES.map((h, i) => {
+                  const p = state.playerScores[i];
+                  const o = state.opponentScores[i];
+                  return `
+                    <tr>
+                      <td class="py-2.5 font-bold text-slate-900">#${h.hole} <span class="font-normal text-slate-400">(${h.category})</span></td>
+                      <td class="py-2.5 text-slate-600">${h.par}</td>
+                      <td class="py-2.5 font-bold text-emerald-700">${p ? `${p.strokes} (${p.club})` : '—'}</td>
+                      <td class="py-2.5 text-slate-700">${p || state.currentHoleIndex >= 9 ? `${o.strokes} (${o.club})` : 'Hidden'}</td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+        modal.classList.remove("hidden");
+      } else {
+        modal.classList.add("hidden");
+      }
+    }
+
+    // Boot App
+    initFromURL();
+  </script>
+</body>
+</html>
